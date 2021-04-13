@@ -7,7 +7,9 @@ import {Button, Header, TextInput} from '../../components';
 import {showMessage, useForm} from '../../utils';
 import storage from '../../utils/storage';
 
-const AddRAB = ({navigation}) => {
+const EditRAB = ({navigation, route}) => {
+  const data = route.params;
+
   const [token, setToken] = useState('');
   const [NPSN, setNPSN] = useState('');
   const [activitas, setActivitas] = useState([]);
@@ -16,33 +18,36 @@ const AddRAB = ({navigation}) => {
   const [activitas3, setActivitas3] = useState([]);
   const [activitas4, setActivitas4] = useState([]);
   const [selectedActivitas, setSelectedActivitas] = useState('');
-  const [selectedActivitas1, setSelectedActivitas1] = useState('');
-  const [selectedActivitas2, setSelectedActivitas2] = useState('');
-  const [selectedActivitas3, setSelectedActivitas3] = useState('');
-  const [selectedActivitas4, setSelectedActivitas4] = useState('');
+  const [selectedActivitas1, setSelectedActivitas1] = useState(
+    data.id_aktifitas,
+  );
+  const [selectedActivitas2, setSelectedActivitas2] = useState(data.kode_isi_1);
+  const [selectedActivitas3, setSelectedActivitas3] = useState(data.kode_isi_2);
+  const [selectedActivitas4, setSelectedActivitas4] = useState(data.kode_isi_3);
 
   const [form, setForm] = useForm({
-    kode: '',
-    uraian: '',
-    jumlah_1: '1',
-    jumlah_2: '1',
-    jumlah_3: '1',
-    jumlah_4: '1',
-    satuan_1: '',
-    satuan_2: '',
-    satuan_3: '',
-    satuan_4: '',
-    harga_ringgit: '',
-    harga_rupiah: '',
-    total_harga_ringgit: '',
-    total_harga_rupiah: '',
-    prioritas: '',
+    kode: data.kode,
+    uraian: data.nama,
+    jumlah_1: data.jumlah_1.toString(),
+    jumlah_2: data.jumlah_2.toString(),
+    jumlah_3: data.jumlah_3.toString(),
+    jumlah_4: data.jumlah_4.toString(),
+    satuan_1: data.satuan_1,
+    satuan_2: data.satuan_2,
+    satuan_3: data.satuan_3,
+    satuan_4: data.satuan_4,
+    harga_ringgit: data.harga_ringgit.toString(),
+    harga_rupiah: data.harga_rupiah.toString(),
+    total_harga_ringgit: data.total_harga_ringgit.toString(),
+    total_harga_rupiah: data.total_harga_rupiah.toString(),
+    prioritas: data.prioritas.toString(),
   });
 
-  const rupiah = parseInt(form.harga_ringgit) * 3000;
+  const [ringgit, setRinggit] = useState(data.harga_ringgit.toString());
+  const rupiah = parseInt(ringgit) * 3000;
 
   const total_ringgit =
-    parseInt(form.harga_ringgit) *
+    parseInt(ringgit) *
     parseInt(form.jumlah_1) *
     parseInt(form.jumlah_2) *
     parseInt(form.jumlah_3) *
@@ -138,59 +143,49 @@ const AddRAB = ({navigation}) => {
   }, []);
 
   const onSubmit = () => {
-    storage
-      .load({
-        key: 'profile',
-      })
-      .then((res) => {
-        const kode_isi_1 = selectedActivitas2 === '' ? 0 : selectedActivitas2;
-        const kode_isi_2 = selectedActivitas3 === '' ? 0 : selectedActivitas3;
-        const kode_isi_3 = selectedActivitas4 === '' ? 0 : selectedActivitas4;
-        const data = {
-          id_cabang: res.cabang.id,
-          id_aktifitas: selectedActivitas1,
-          kode_isi_1: kode_isi_1,
-          kode_isi_2: kode_isi_2,
-          kode_isi_3: kode_isi_3,
-          kode: form.kode,
-          nama: form.uraian,
-          jumlah_1: parseInt(form.jumlah_1),
-          jumlah_2: parseInt(form.jumlah_2),
-          jumlah_3: parseInt(form.jumlah_3),
-          jumlah_4: parseInt(form.jumlah_4),
-          satuan_1: form.satuan_1,
-          satuan_2: form.satuan_2,
-          satuan_3: form.satuan_3,
-          satuan_4: form.satuan_4,
-          harga_rupiah: rupiah,
-          harga_ringgit: parseInt(form.harga_ringgit),
-          total_harga_rupiah: total_rupiah,
-          total_harga_ringgit: total_ringgit,
-          prioritas: parseInt(form.prioritas),
-        };
+    const dataForUpdate = {
+      id_cabang: data.id_cabang,
+      id_aktifitas: data.id_aktifitas,
+      kode_isi_1: parseInt(selectedActivitas2),
+      kode_isi_2: parseInt(selectedActivitas3),
+      kode_isi_3: parseInt(selectedActivitas4),
+      kode: form.kode,
+      nama: form.uraian,
+      jumlah_1: parseInt(form.jumlah_1),
+      jumlah_2: parseInt(form.jumlah_2),
+      jumlah_3: parseInt(form.jumlah_3),
+      jumlah_4: parseInt(form.jumlah_4),
+      satuan_1: form.satuan_1,
+      satuan_2: form.satuan_2,
+      satuan_3: form.satuan_3,
+      satuan_4: form.satuan_4,
+      harga_ringgit: parseInt(ringgit),
+      harga_rupiah: rupiah,
+      total_harga_rupiah: total_rupiah,
+      total_harga_ringgit: total_ringgit,
+      prioritas: parseInt(form.prioritas),
+    };
 
-        Axios.post(`${API_HOST.url}rab`, data, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-          .then((result) => {
-            showMessage(result.data.meta.message);
-            setTimeout(() => {
-              navigation.goBack();
-            }, 1000);
-          })
-          .catch((err) => {
-            console.log(err.response);
-          });
+    console.log(dataForUpdate);
+
+    Axios.put(`${API_HOST.url}rab/${data.id}`, dataForUpdate, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((result) => {
+        showMessage(result.data.meta.message);
+        setTimeout(() => {
+          navigation.navigate('MainApp');
+        }, 1000);
       })
       .catch((err) => {
-        console.warn(err.message);
+        console.log(err.response);
       });
   };
   return (
     <View style={styles.page}>
-      <Header title="Tambah RAB" onBack onPress={() => navigation.goBack()} />
+      <Header title="Edit RAB" onBack onPress={() => navigation.goBack()} />
       <View style={styles.container}>
         <ScrollView>
           <View style={styles.content}>
@@ -287,8 +282,8 @@ const AddRAB = ({navigation}) => {
             />
             <TextInput
               placeholder="Harga Ringgit (RM)"
-              value={form.harga_ringgit}
-              onChangeText={(value) => setForm('harga_ringgit', value)}
+              value={ringgit}
+              onChangeText={(value) => setRinggit(value)}
             />
             <TextInput
               placeholder="Harga Rupiah (RP)"
@@ -377,14 +372,14 @@ const AddRAB = ({navigation}) => {
           </View>
         </ScrollView>
         <View style={styles.button}>
-          <Button text="Tambah" onPress={onSubmit} />
+          <Button text="Ubah" onPress={onSubmit} />
         </View>
       </View>
     </View>
   );
 };
 
-export default AddRAB;
+export default EditRAB;
 
 const styles = StyleSheet.create({
   page: {

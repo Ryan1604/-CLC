@@ -1,13 +1,13 @@
 import Axios from 'axios';
 import React, {useEffect, useState} from 'react';
-import {ScrollView, StyleSheet, View} from 'react-native';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import normalize from 'react-native-normalize';
 import {Button, Header, TextInput} from '../../components';
 import {showMessage, useForm} from '../../utils';
 import storage from '../../utils/storage';
 
-const AddRAB = ({navigation}) => {
+const SisaRAB = ({navigation}) => {
   const [token, setToken] = useState('');
   const [NPSN, setNPSN] = useState('');
   const [activitas, setActivitas] = useState([]);
@@ -22,33 +22,14 @@ const AddRAB = ({navigation}) => {
   const [selectedActivitas4, setSelectedActivitas4] = useState('');
 
   const [form, setForm] = useForm({
-    kode: '',
-    uraian: '',
-    jumlah_1: '1',
-    jumlah_2: '1',
-    jumlah_3: '1',
-    jumlah_4: '1',
-    satuan_1: '',
-    satuan_2: '',
-    satuan_3: '',
-    satuan_4: '',
-    harga_ringgit: '',
-    harga_rupiah: '',
-    total_harga_ringgit: '',
-    total_harga_rupiah: '',
+    total_ringgit: '',
+    total_rupiah: '',
+    tambahan_biaya_ringgit: '',
+    tambahan_biaya_rupiah: '',
     prioritas: '',
   });
 
-  const rupiah = parseInt(form.harga_ringgit) * 3000;
-
-  const total_ringgit =
-    parseInt(form.harga_ringgit) *
-    parseInt(form.jumlah_1) *
-    parseInt(form.jumlah_2) *
-    parseInt(form.jumlah_3) *
-    parseInt(form.jumlah_4);
-
-  const total_rupiah = parseInt(total_ringgit) * 3000;
+  const rupiah = parseInt(form.total_ringgit) * 3000;
 
   const API_HOST = {
     url: 'https://api.laporanclcsmp.com/api/v1/',
@@ -104,15 +85,6 @@ const AddRAB = ({navigation}) => {
     setForm('kode', response.data.code);
   };
 
-  const getCode = async (e) => {
-    const response = await Axios.get(`${API_HOST.url}/code/${e}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    setForm('kode', response.data.code);
-  };
-
   useEffect(() => {
     storage
       .load({
@@ -152,21 +124,10 @@ const AddRAB = ({navigation}) => {
           kode_isi_1: kode_isi_1,
           kode_isi_2: kode_isi_2,
           kode_isi_3: kode_isi_3,
-          kode: form.kode,
-          nama: form.uraian,
-          jumlah_1: parseInt(form.jumlah_1),
-          jumlah_2: parseInt(form.jumlah_2),
-          jumlah_3: parseInt(form.jumlah_3),
-          jumlah_4: parseInt(form.jumlah_4),
-          satuan_1: form.satuan_1,
-          satuan_2: form.satuan_2,
-          satuan_3: form.satuan_3,
-          satuan_4: form.satuan_4,
-          harga_rupiah: rupiah,
-          harga_ringgit: parseInt(form.harga_ringgit),
-          total_harga_rupiah: total_rupiah,
-          total_harga_ringgit: total_ringgit,
-          prioritas: parseInt(form.prioritas),
+          total_ringgit: parseInt(form.total_ringgit),
+          total_rupiah: rupiah,
+          tambahan_biaya_ringgit: '',
+          tambahan_biaya_rupiah: '',
         };
 
         Axios.post(`${API_HOST.url}rab`, data, {
@@ -190,7 +151,11 @@ const AddRAB = ({navigation}) => {
   };
   return (
     <View style={styles.page}>
-      <Header title="Tambah RAB" onBack onPress={() => navigation.goBack()} />
+      <Header
+        title="Alihkan Sisa Dana"
+        onBack
+        onPress={() => navigation.goBack()}
+      />
       <View style={styles.container}>
         <ScrollView>
           <View style={styles.content}>
@@ -269,122 +234,58 @@ const AddRAB = ({navigation}) => {
               placeholder="Pilih Uraian"
               onChangeItem={(item) => {
                 setSelectedActivitas4(item.value);
-                if (item.value) {
-                  getCode(item.value);
-                }
               }}
             />
-            <TextInput
-              placeholder="Kode"
-              value={form.kode}
-              onChangeText={(value) => setForm('kode', value)}
-              disabled={false}
-            />
-            <TextInput
-              placeholder="Uraian"
-              value={form.uraian}
-              onChangeText={(value) => setForm('uraian', value)}
-            />
-            <TextInput
-              placeholder="Harga Ringgit (RM)"
-              value={form.harga_ringgit}
-              onChangeText={(value) => setForm('harga_ringgit', value)}
-            />
-            <TextInput
-              placeholder="Harga Rupiah (RP)"
-              value={`${isNaN(rupiah) ? 0 : rupiah}`}
-              onChangeText={(value) => setForm('harga_rupiah', value)}
-            />
-            <View style={styles.smallForm}>
-              <View style={styles.left}>
-                <TextInput
-                  placeholder="Jumlah"
-                  value={form.jumlah_1}
-                  onChangeText={(value) => setForm('jumlah_1', value)}
-                />
-              </View>
-              <View style={styles.right}>
-                <TextInput
-                  placeholder="Satuan"
-                  value={form.satuan_1}
-                  onChangeText={(value) => setForm('satuan_1', value)}
-                />
-              </View>
+            <View>
+              <Text style={styles.labelInput}>Total Ringgit</Text>
+              <TextInput
+                placeholder="Total Ringgit (RM)"
+                value={form.harga_ringgit}
+                onChangeText={(value) => setForm('harga_ringgit', value)}
+                disabled={false}
+              />
             </View>
-            <View style={styles.smallForm}>
-              <View style={styles.left}>
-                <TextInput
-                  placeholder="Jumlah"
-                  value={form.jumlah_2}
-                  onChangeText={(value) => setForm('jumlah_2', value)}
-                />
-              </View>
-              <View style={styles.right}>
-                <TextInput
-                  placeholder="Satuan"
-                  value={form.satuan_2}
-                  onChangeText={(value) => setForm('satuan_2', value)}
-                />
-              </View>
+            <View>
+              <Text style={styles.labelInput}>Total Rupiah</Text>
+              <TextInput
+                placeholder="Total Rupiah (RP)"
+                value={`${isNaN(rupiah) ? 0 : rupiah}`}
+                onChangeText={(value) => setForm('harga_rupiah', value)}
+                disabled={false}
+              />
             </View>
-            <View style={styles.smallForm}>
-              <View style={styles.left}>
-                <TextInput
-                  placeholder="Jumlah"
-                  value={form.jumlah_3}
-                  onChangeText={(value) => setForm('jumlah_3', value)}
-                />
-              </View>
-              <View style={styles.right}>
-                <TextInput
-                  placeholder="Satuan"
-                  value={form.satuan_3}
-                  onChangeText={(value) => setForm('satuan_3', value)}
-                />
-              </View>
+            <View>
+              <Text style={styles.labelInput}>Tambahan Biaya (RM)</Text>
+              <TextInput
+                placeholder="Tambahan Biaya (RM)"
+                value={form.tambahan_biaya_ringgit}
+                onChangeText={(value) =>
+                  setForm('tambahan_biaya_ringgit', value)
+                }
+              />
             </View>
-            <View style={styles.smallForm}>
-              <View style={styles.left}>
-                <TextInput
-                  placeholder="Jumlah"
-                  value={form.jumlah_4}
-                  onChangeText={(value) => setForm('jumlah_4', value)}
-                />
-              </View>
-              <View style={styles.right}>
-                <TextInput
-                  placeholder="Satuan"
-                  value={form.satuan_4}
-                  onChangeText={(value) => setForm('satuan_4', value)}
-                />
-              </View>
+            <View>
+              <Text style={styles.labelInput}>Tambahan Biaya (RP)</Text>
+              <TextInput
+                placeholder="Tambahan Biaya (RP)"
+                value={form.tambahan_biaya_rupiah}
+                onChangeText={(value) =>
+                  setForm('tambahan_biaya_rupiah', value)
+                }
+                disabled={false}
+              />
             </View>
-            <TextInput
-              value={`${isNaN(total_ringgit) ? 0 : total_ringgit}`}
-              onChangeText={(value) => setForm('total_harga_ringgit', value)}
-              disabled={false}
-            />
-            <TextInput
-              value={`${isNaN(total_rupiah) ? 0 : total_rupiah} `}
-              onChangeText={(value) => setForm('total_harga_rupiah', value)}
-              disabled={false}
-            />
-            <TextInput
-              placeholder="Prioritas"
-              value={form.prioritas}
-              onChangeText={(value) => setForm('prioritas', value)}
-            />
           </View>
         </ScrollView>
         <View style={styles.button}>
-          <Button text="Tambah" onPress={onSubmit} />
+          <Button text="Simpan" onPress={onSubmit} />
         </View>
       </View>
     </View>
   );
 };
 
-export default AddRAB;
+export default SisaRAB;
 
 const styles = StyleSheet.create({
   page: {
@@ -404,6 +305,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Regular',
     fontSize: normalize(12),
     color: '#595959',
+  },
+  labelInput: {
+    fontFamily: 'Montserrat-Regular',
+    fontSize: normalize(14),
+    color: '#595959',
+    paddingHorizontal: normalize(14),
   },
   input: {
     borderBottomWidth: 1,
