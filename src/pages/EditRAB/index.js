@@ -1,15 +1,20 @@
 import Axios from 'axios';
 import React, {useEffect, useState} from 'react';
-import {ScrollView, StyleSheet, View} from 'react-native';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import normalize from 'react-native-normalize';
+import {useDispatch} from 'react-redux';
 import {Button, Header, TextInput} from '../../components';
+import {API_HOST} from '../../config/API';
+import {editRAB} from '../../redux/action/rab';
 import {showMessage, useForm} from '../../utils';
-import storage from '../../utils/storage';
+import {getData} from '../../utils/storage';
 
 const EditRAB = ({navigation, route}) => {
   const data = route.params;
 
+  const [kurs, setKurs] = useState(0);
+  const [id] = useState(data.id);
   const [token, setToken] = useState('');
   const [NPSN, setNPSN] = useState('');
   const [activitas, setActivitas] = useState([]);
@@ -17,13 +22,13 @@ const EditRAB = ({navigation, route}) => {
   const [activitas2, setActivitas2] = useState([]);
   const [activitas3, setActivitas3] = useState([]);
   const [activitas4, setActivitas4] = useState([]);
-  const [selectedActivitas, setSelectedActivitas] = useState('');
-  const [selectedActivitas1, setSelectedActivitas1] = useState(
-    data.id_aktifitas,
-  );
-  const [selectedActivitas2, setSelectedActivitas2] = useState(data.kode_isi_1);
-  const [selectedActivitas3, setSelectedActivitas3] = useState(data.kode_isi_2);
-  const [selectedActivitas4, setSelectedActivitas4] = useState(data.kode_isi_3);
+  const [selectedActivitas, setSelectedActivitas] = useState();
+  const [selectedActivitas1, setSelectedActivitas1] = useState();
+  const [selectedActivitas2, setSelectedActivitas2] = useState();
+  const [selectedActivitas3, setSelectedActivitas3] = useState();
+  const [selectedActivitas4, setSelectedActivitas4] = useState();
+
+  const dispatch = useDispatch();
 
   const [form, setForm] = useForm({
     kode: data.kode,
@@ -44,7 +49,7 @@ const EditRAB = ({navigation, route}) => {
   });
 
   const [ringgit, setRinggit] = useState(data.harga_ringgit.toString());
-  const rupiah = parseInt(ringgit) * 3000;
+  const rupiah = parseInt(ringgit) * kurs;
 
   const total_ringgit =
     parseInt(ringgit) *
@@ -53,22 +58,46 @@ const EditRAB = ({navigation, route}) => {
     parseInt(form.jumlah_3) *
     parseInt(form.jumlah_4);
 
-  const total_rupiah = parseInt(total_ringgit) * 3000;
+  const total_rupiah = parseInt(total_ringgit) * kurs;
 
-  const API_HOST = {
-    url: 'https://api.laporanclcsmp.com/api/v1/',
-  };
-
-  const getData = async (auth) => {
-    const response = await Axios.get(`${API_HOST.url}/aktifitas`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${auth}`,
-      },
+  // Get token
+  useEffect(() => {
+    getData('token').then((res) => {
+      setToken(res);
     });
+  });
 
-    setActivitas(response.data.aktifitas);
-  };
+  // Get Data Profile
+  useEffect(() => {
+    getData('profile').then((res) => {
+      setNPSN(res.cabang.kode);
+    });
+  });
+
+  // Get Kurs
+  useEffect(() => {
+    const getKurs = async () => {
+      const result = await Axios.get(`${API_HOST.url}kurs`);
+
+      setKurs(result.data.rupiah);
+    };
+    getKurs();
+  });
+
+  // Get Aktifitas
+  useEffect(() => {
+    const getAktifitas = async (auth) => {
+      const response = await Axios.get(`${API_HOST.url}/aktifitas`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${auth}`,
+        },
+      });
+
+      setActivitas(response.data.aktifitas);
+    };
+    getAktifitas(token);
+  });
 
   const getData1 = async (e) => {
     const response = await Axios.get(`${API_HOST.url}/aktifitas/${e}`, {
@@ -118,37 +147,19 @@ const EditRAB = ({navigation, route}) => {
     setForm('kode', response.data.code);
   };
 
-  useEffect(() => {
-    storage
-      .load({
-        key: 'token',
-      })
-      .then((resToken) => {
-        setToken(resToken);
-        getData(resToken);
-      })
-      .catch((err) => {
-        console.warn(err.message);
-      });
-    storage
-      .load({
-        key: 'profile',
-      })
-      .then((result) => {
-        setNPSN(result.cabang.kode);
-      })
-      .catch((err) => {
-        console.warn(err.message);
-      });
-  }, []);
-
   const onSubmit = () => {
+    const kode_isi_1 =
+      selectedActivitas2 === undefined ? 0 : selectedActivitas2;
+    const kode_isi_2 =
+      selectedActivitas3 === undefined ? 0 : selectedActivitas3;
+    const kode_isi_3 =
+      selectedActivitas4 === undefined ? 0 : selectedActivitas4;
     const dataForUpdate = {
       id_cabang: data.id_cabang,
       id_aktifitas: data.id_aktifitas,
-      kode_isi_1: parseInt(selectedActivitas2),
-      kode_isi_2: parseInt(selectedActivitas3),
-      kode_isi_3: parseInt(selectedActivitas4),
+      kode_isi_1: kode_isi_1,
+      kode_isi_2: kode_isi_2,
+      kode_isi_3: kode_isi_3,
       kode: form.kode,
       nama: form.uraian,
       jumlah_1: parseInt(form.jumlah_1),
@@ -166,23 +177,9 @@ const EditRAB = ({navigation, route}) => {
       prioritas: parseInt(form.prioritas),
     };
 
-    console.log(dataForUpdate);
-
-    Axios.put(`${API_HOST.url}rab/${data.id}`, dataForUpdate, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((result) => {
-        showMessage(result.data.meta.message);
-        setTimeout(() => {
-          navigation.navigate('MainApp');
-        }, 1000);
-      })
-      .catch((err) => {
-        console.log(err.response);
-      });
+    dispatch(editRAB(id, dataForUpdate, navigation));
   };
+
   return (
     <View style={styles.page}>
       <Header title="Edit RAB" onBack onPress={() => navigation.goBack()} />
@@ -269,27 +266,40 @@ const EditRAB = ({navigation, route}) => {
                 }
               }}
             />
-            <TextInput
-              placeholder="Kode"
-              value={form.kode}
-              onChangeText={(value) => setForm('kode', value)}
-              disabled={false}
-            />
-            <TextInput
-              placeholder="Uraian"
-              value={form.uraian}
-              onChangeText={(value) => setForm('uraian', value)}
-            />
-            <TextInput
-              placeholder="Harga Ringgit (RM)"
-              value={ringgit}
-              onChangeText={(value) => setRinggit(value)}
-            />
-            <TextInput
-              placeholder="Harga Rupiah (RP)"
-              value={`${isNaN(rupiah) ? 0 : rupiah}`}
-              onChangeText={(value) => setForm('harga_rupiah', value)}
-            />
+            <View>
+              <Text style={styles.labelInput}>Kode</Text>
+              <TextInput
+                placeholder="Kode"
+                value={form.kode}
+                onChangeText={(value) => setForm('kode', value)}
+                disabled={false}
+              />
+            </View>
+            <View>
+              <Text style={styles.labelInput}>Masukkan Uraian</Text>
+              <TextInput
+                placeholder="Uraian"
+                value={form.uraian}
+                onChangeText={(value) => setForm('uraian', value)}
+              />
+            </View>
+            <View>
+              <Text style={styles.labelInput}>Harga Ringgit (RM)</Text>
+              <TextInput
+                placeholder="Harga Ringgit (RM)"
+                value={ringgit}
+                onChangeText={(value) => setRinggit(value)}
+              />
+            </View>
+            <View>
+              <Text style={styles.labelInput}>Harga Rupiah (RP)</Text>
+              <TextInput
+                placeholder="Harga Rupiah (RP)"
+                value={`${isNaN(rupiah) ? 0 : rupiah}`}
+                onChangeText={(value) => setForm('harga_rupiah', value)}
+                disabled={false}
+              />
+            </View>
             <View style={styles.smallForm}>
               <View style={styles.left}>
                 <TextInput
@@ -354,21 +364,30 @@ const EditRAB = ({navigation, route}) => {
                 />
               </View>
             </View>
-            <TextInput
-              value={`${isNaN(total_ringgit) ? 0 : total_ringgit}`}
-              onChangeText={(value) => setForm('total_harga_ringgit', value)}
-              disabled={false}
-            />
-            <TextInput
-              value={`${isNaN(total_rupiah) ? 0 : total_rupiah} `}
-              onChangeText={(value) => setForm('total_harga_rupiah', value)}
-              disabled={false}
-            />
-            <TextInput
-              placeholder="Prioritas"
-              value={form.prioritas}
-              onChangeText={(value) => setForm('prioritas', value)}
-            />
+            <View>
+              <Text style={styles.labelInput}>Total Harga Ringgit (RM)</Text>
+              <TextInput
+                value={`${isNaN(total_ringgit) ? 0 : total_ringgit}`}
+                onChangeText={(value) => setForm('total_harga_ringgit', value)}
+                disabled={false}
+              />
+            </View>
+            <View>
+              <Text style={styles.labelInput}>Total Harga Rupiah (RP)</Text>
+              <TextInput
+                value={`${isNaN(total_rupiah) ? 0 : total_rupiah} `}
+                onChangeText={(value) => setForm('total_harga_rupiah', value)}
+                disabled={false}
+              />
+            </View>
+            <View>
+              <Text style={styles.labelInput}>Prioritas</Text>
+              <TextInput
+                placeholder="Prioritas"
+                value={form.prioritas}
+                onChangeText={(value) => setForm('prioritas', value)}
+              />
+            </View>
           </View>
         </ScrollView>
         <View style={styles.button}>
@@ -417,12 +436,12 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     fontFamily: 'Montserrat-Regular',
-    fontSize: 16,
+    fontSize: normalize(16),
     color: '#6D6D6D',
   },
   labelActive: {
     fontFamily: 'Montserrat-Regular',
-    fontSize: 16,
+    fontSize: normalize(16),
     color: '#020202',
   },
   smallForm: {
@@ -438,5 +457,11 @@ const styles = StyleSheet.create({
   button: {
     marginHorizontal: normalize(20),
     marginBottom: normalize(67),
+  },
+  labelInput: {
+    fontFamily: 'Montserrat-Regular',
+    fontSize: normalize(14),
+    color: '#595959',
+    paddingHorizontal: normalize(14),
   },
 });

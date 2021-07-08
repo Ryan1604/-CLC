@@ -1,3 +1,45 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:32499fdf4e69d8ec52b8605b1ec2bfa7c8565ecec7f0ac4e3506e8315c466267
-size 1574
+import React, {useEffect} from 'react';
+import {Image, StyleSheet, View} from 'react-native';
+import normalize from 'react-native-normalize';
+import {Logo} from '../../assets';
+import {getData} from '../../utils/storage';
+
+const SplashScreen = ({navigation}) => {
+  useEffect(() => {
+    setTimeout(() => {
+      getData('firstTime').then((res) => {
+        if (res) {
+          getData('token').then((result) => {
+            if (result) {
+              navigation.reset({index: 0, routes: [{name: 'MainApp'}]});
+            } else {
+              navigation.replace('Login');
+            }
+          });
+        } else {
+          navigation.replace('IntroSlider');
+        }
+      });
+    }, 2000);
+  }, [navigation]);
+  return (
+    <View style={styles.page}>
+      <Image source={Logo} style={styles.logo} />
+    </View>
+  );
+};
+
+export default SplashScreen;
+
+const styles = StyleSheet.create({
+  page: {
+    backgroundColor: '#FED330',
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logo: {
+    width: normalize(155),
+    height: normalize(147),
+  },
+});

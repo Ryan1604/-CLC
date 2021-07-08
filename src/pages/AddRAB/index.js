@@ -1,15 +1,20 @@
 import Axios from 'axios';
 import React, {useEffect, useState} from 'react';
-import {ScrollView, StyleSheet, View} from 'react-native';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import normalize from 'react-native-normalize';
+import {useDispatch} from 'react-redux';
 import {Button, Header, TextInput} from '../../components';
-import {showMessage, useForm} from '../../utils';
-import storage from '../../utils/storage';
+import {API_HOST} from '../../config/API';
+import {addRAB} from '../../redux/action/rab';
+import {useForm} from '../../utils';
+import {getData} from '../../utils/storage';
 
 const AddRAB = ({navigation}) => {
-  const [token, setToken] = useState('');
-  const [NPSN, setNPSN] = useState('');
+  const [kurs, setKurs] = useState(0);
+  const [token, setToken] = useState(null);
+  const [id, setId] = useState('');
+  const [NPSN, setNPSN] = useState(null);
   const [activitas, setActivitas] = useState([]);
   const [activitas1, setActivitas1] = useState([]);
   const [activitas2, setActivitas2] = useState([]);
@@ -20,6 +25,8 @@ const AddRAB = ({navigation}) => {
   const [selectedActivitas2, setSelectedActivitas2] = useState('');
   const [selectedActivitas3, setSelectedActivitas3] = useState('');
   const [selectedActivitas4, setSelectedActivitas4] = useState('');
+
+  const dispatch = useDispatch();
 
   const [form, setForm] = useForm({
     kode: '',
@@ -39,7 +46,7 @@ const AddRAB = ({navigation}) => {
     prioritas: '',
   });
 
-  const rupiah = parseInt(form.harga_ringgit) * 3000;
+  const rupiah = parseInt(form.harga_ringgit) * kurs;
 
   const total_ringgit =
     parseInt(form.harga_ringgit) *
@@ -48,22 +55,72 @@ const AddRAB = ({navigation}) => {
     parseInt(form.jumlah_3) *
     parseInt(form.jumlah_4);
 
-  const total_rupiah = parseInt(total_ringgit) * 3000;
+  const total_rupiah = parseInt(total_ringgit) * kurs;
 
-  const API_HOST = {
-    url: 'https://api.laporanclcsmp.com/api/v1/',
-  };
-
-  const getData = async (auth) => {
-    const response = await Axios.get(`${API_HOST.url}/aktifitas`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${auth}`,
-      },
+  // Get token
+  useEffect(() => {
+    getData('token').then((res) => {
+      setToken(res);
     });
+  });
 
-    setActivitas(response.data.aktifitas);
-  };
+  // Get Data Profile
+  useEffect(() => {
+    getData('profile').then((res) => {
+      setId(res.cabang.id);
+      setNPSN(res.cabang.kode);
+    });
+  });
+
+  // Get Kurs
+  useEffect(() => {
+    const source = Axios.CancelToken.source();
+    const getKurs = async () => {
+      try {
+        const result = await Axios.get(`${API_HOST.url}kurs`, {
+          cancelToken: source.token,
+        });
+
+        setKurs(result.data.rupiah);
+      } catch (err) {
+        if (Axios.isCancel(err)) {
+        } else {
+          throw err;
+        }
+      }
+    };
+    getKurs();
+
+    return () => {
+      source.cancel();
+    };
+  });
+
+  // Get Aktifitas
+  useEffect(() => {
+    const source = Axios.CancelToken.source();
+    const getAktifitas = async (auth) => {
+      try {
+        const result = await Axios.get(`${API_HOST.url}aktifitas`, {
+          cancelToken: source.token,
+          headers: {
+            Authorization: `Bearer ${auth}`,
+          },
+        });
+        setActivitas(result.data.aktifitas);
+      } catch (err) {
+        if (Axios.isCancel(err)) {
+        } else {
+          throw err;
+        }
+      }
+    };
+    getAktifitas(token);
+
+    return () => {
+      source.cancel();
+    };
+  });
 
   const getData1 = async (e) => {
     const response = await Axios.get(`${API_HOST.url}/aktifitas/${e}`, {
@@ -113,81 +170,36 @@ const AddRAB = ({navigation}) => {
     setForm('kode', response.data.code);
   };
 
-  useEffect(() => {
-    storage
-      .load({
-        key: 'token',
-      })
-      .then((resToken) => {
-        setToken(resToken);
-        getData(resToken);
-      })
-      .catch((err) => {
-        console.warn(err.message);
-      });
-    storage
-      .load({
-        key: 'profile',
-      })
-      .then((result) => {
-        setNPSN(result.cabang.kode);
-      })
-      .catch((err) => {
-        console.warn(err.message);
-      });
-  }, []);
-
   const onSubmit = () => {
-    storage
-      .load({
-        key: 'profile',
-      })
-      .then((res) => {
-        const kode_isi_1 = selectedActivitas2 === '' ? 0 : selectedActivitas2;
-        const kode_isi_2 = selectedActivitas3 === '' ? 0 : selectedActivitas3;
-        const kode_isi_3 = selectedActivitas4 === '' ? 0 : selectedActivitas4;
-        const data = {
-          id_cabang: res.cabang.id,
-          id_aktifitas: selectedActivitas1,
-          kode_isi_1: kode_isi_1,
-          kode_isi_2: kode_isi_2,
-          kode_isi_3: kode_isi_3,
-          kode: form.kode,
-          nama: form.uraian,
-          jumlah_1: parseInt(form.jumlah_1),
-          jumlah_2: parseInt(form.jumlah_2),
-          jumlah_3: parseInt(form.jumlah_3),
-          jumlah_4: parseInt(form.jumlah_4),
-          satuan_1: form.satuan_1,
-          satuan_2: form.satuan_2,
-          satuan_3: form.satuan_3,
-          satuan_4: form.satuan_4,
-          harga_rupiah: rupiah,
-          harga_ringgit: parseInt(form.harga_ringgit),
-          total_harga_rupiah: total_rupiah,
-          total_harga_ringgit: total_ringgit,
-          prioritas: parseInt(form.prioritas),
-        };
+    const kode_isi_1 = selectedActivitas2 === '' ? 0 : selectedActivitas2;
+    const kode_isi_2 = selectedActivitas3 === '' ? 0 : selectedActivitas3;
+    const kode_isi_3 = selectedActivitas4 === '' ? 0 : selectedActivitas4;
+    const data = {
+      id_cabang: id,
+      id_aktifitas: selectedActivitas1,
+      kode_isi_1: kode_isi_1,
+      kode_isi_2: kode_isi_2,
+      kode_isi_3: kode_isi_3,
+      kode: form.kode,
+      nama: form.uraian,
+      jumlah_1: parseInt(form.jumlah_1),
+      jumlah_2: parseInt(form.jumlah_2),
+      jumlah_3: parseInt(form.jumlah_3),
+      jumlah_4: parseInt(form.jumlah_4),
+      satuan_1: form.satuan_1,
+      satuan_2: form.satuan_2,
+      satuan_3: form.satuan_3,
+      satuan_4: form.satuan_4,
+      harga_rupiah: rupiah,
+      harga_ringgit: parseInt(form.harga_ringgit),
+      total_harga_rupiah: total_rupiah,
+      total_harga_ringgit: total_ringgit,
+      prioritas: parseInt(form.prioritas),
+    };
 
-        Axios.post(`${API_HOST.url}rab`, data, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-          .then((result) => {
-            showMessage(result.data.meta.message);
-            setTimeout(() => {
-              navigation.goBack();
-            }, 1000);
-          })
-          .catch((err) => {
-            console.log(err.response);
-          });
-      })
-      .catch((err) => {
-        console.warn(err.message);
-      });
+    dispatch(addRAB(data, navigation));
   };
+
   return (
     <View style={styles.page}>
       <Header title="Tambah RAB" onBack onPress={() => navigation.goBack()} />
@@ -274,27 +286,40 @@ const AddRAB = ({navigation}) => {
                 }
               }}
             />
-            <TextInput
-              placeholder="Kode"
-              value={form.kode}
-              onChangeText={(value) => setForm('kode', value)}
-              disabled={false}
-            />
-            <TextInput
-              placeholder="Uraian"
-              value={form.uraian}
-              onChangeText={(value) => setForm('uraian', value)}
-            />
-            <TextInput
-              placeholder="Harga Ringgit (RM)"
-              value={form.harga_ringgit}
-              onChangeText={(value) => setForm('harga_ringgit', value)}
-            />
-            <TextInput
-              placeholder="Harga Rupiah (RP)"
-              value={`${isNaN(rupiah) ? 0 : rupiah}`}
-              onChangeText={(value) => setForm('harga_rupiah', value)}
-            />
+            <View>
+              <Text style={styles.labelInput}>Kode</Text>
+              <TextInput
+                placeholder="Kode"
+                value={form.kode}
+                onChangeText={(value) => setForm('kode', value)}
+                disabled={false}
+              />
+            </View>
+            <View>
+              <Text style={styles.labelInput}>Masukkan Uraian</Text>
+              <TextInput
+                placeholder="Uraian"
+                value={form.uraian}
+                onChangeText={(value) => setForm('uraian', value)}
+              />
+            </View>
+            <View>
+              <Text style={styles.labelInput}>Harga Ringgit (RM)</Text>
+              <TextInput
+                placeholder="Harga Ringgit (RM)"
+                value={form.harga_ringgit}
+                onChangeText={(value) => setForm('harga_ringgit', value)}
+              />
+            </View>
+            <View>
+              <Text style={styles.labelInput}>Hargga Rupiah (RP)</Text>
+              <TextInput
+                placeholder="Harga Rupiah (RP)"
+                value={`${isNaN(rupiah) ? 0 : rupiah}`}
+                onChangeText={(value) => setForm('harga_rupiah', value)}
+                disabled={false}
+              />
+            </View>
             <View style={styles.smallForm}>
               <View style={styles.left}>
                 <TextInput
@@ -359,21 +384,30 @@ const AddRAB = ({navigation}) => {
                 />
               </View>
             </View>
-            <TextInput
-              value={`${isNaN(total_ringgit) ? 0 : total_ringgit}`}
-              onChangeText={(value) => setForm('total_harga_ringgit', value)}
-              disabled={false}
-            />
-            <TextInput
-              value={`${isNaN(total_rupiah) ? 0 : total_rupiah} `}
-              onChangeText={(value) => setForm('total_harga_rupiah', value)}
-              disabled={false}
-            />
-            <TextInput
-              placeholder="Prioritas"
-              value={form.prioritas}
-              onChangeText={(value) => setForm('prioritas', value)}
-            />
+            <View>
+              <Text style={styles.labelInput}>Total Harga Ringgit (RM)</Text>
+              <TextInput
+                value={`${isNaN(total_ringgit) ? 0 : total_ringgit}`}
+                onChangeText={(value) => setForm('total_harga_ringgit', value)}
+                disabled={false}
+              />
+            </View>
+            <View>
+              <Text style={styles.labelInput}>Total Harga Rupiah (RP)</Text>
+              <TextInput
+                value={`${isNaN(total_rupiah) ? 0 : total_rupiah} `}
+                onChangeText={(value) => setForm('total_harga_rupiah', value)}
+                disabled={false}
+              />
+            </View>
+            <View>
+              <Text style={styles.labelInput}>Prioritas</Text>
+              <TextInput
+                placeholder="Prioritas"
+                value={form.prioritas}
+                onChangeText={(value) => setForm('prioritas', value)}
+              />
+            </View>
           </View>
         </ScrollView>
         <View style={styles.button}>
@@ -443,5 +477,11 @@ const styles = StyleSheet.create({
   button: {
     marginHorizontal: normalize(20),
     marginBottom: normalize(67),
+  },
+  labelInput: {
+    fontFamily: 'Montserrat-Regular',
+    fontSize: normalize(14),
+    color: '#595959',
+    paddingHorizontal: normalize(14),
   },
 });

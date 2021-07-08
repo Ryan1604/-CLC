@@ -64,7 +64,14 @@ const DetailPengeluaran = ({navigation, route}) => {
       <View style={styles.containerImage}>
         <Text style={styles.label}>Gambar</Text>
         <Gap height={10} />
-        <Image source={{uri: images}} style={styles.image} />
+        <View>
+          <Image
+            source={{
+              uri: images,
+            }}
+            style={styles.image}
+          />
+        </View>
       </View>
     </View>
   );
@@ -89,12 +96,12 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: 'Montserrat-SemiBold',
-    fontSize: 14,
+    fontSize: normalize(14),
     color: '#181818',
   },
   value: {
     fontFamily: 'Montserrat-Regular',
-    fontSize: 14,
+    fontSize: normalize(14),
     color: '#7A7A7A',
   },
   image: {

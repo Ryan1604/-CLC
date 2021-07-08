@@ -1,3 +1,22 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:2d343e50caafe84a93649dce9dcba8159650c051c919ca661110feca26b013f2
-size 856
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {showMessage} from '../showMessage';
+
+export const storeData = async (storageKey, value) => {
+  try {
+    const jsonValue = JSON.stringify(value);
+    await AsyncStorage.setItem(storageKey, jsonValue);
+  } catch (e) {
+    // saving error
+    showMessage('Gagal menyimpan ke Localstorage');
+  }
+};
+
+export const getData = async (storageKey) => {
+  try {
+    const jsonValue = await AsyncStorage.getItem(storageKey);
+    return jsonValue != null ? JSON.parse(jsonValue) : null;
+  } catch (e) {
+    // error reading value
+    showMessage('Gagal mengambil Data dari Localstorage');
+  }
+};

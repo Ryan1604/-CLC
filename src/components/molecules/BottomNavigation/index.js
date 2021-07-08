@@ -20,7 +20,7 @@ const Icon = ({label, active}) => {
       return active ? <IcRABActive /> : <IcRAB />;
     case 'Realisasi':
       return active ? <IcPengeluaranActive /> : <IcPengeluaran />;
-    case 'Profile':
+    case 'Laporan':
       return active ? <IcProfileActive /> : <IcProfile />;
 
     default:

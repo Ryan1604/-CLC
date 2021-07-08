@@ -23,6 +23,11 @@ import {
   DanaKurang,
   AlihkanDanaKurang,
   DetailPengeluaran,
+  Informasi,
+  Laporan,
+  ListEdit,
+  Preview,
+  AddPengeluaranDetail,
 } from '../pages';
 
 const Stack = createStackNavigator();
@@ -34,7 +39,7 @@ const MainApp = () => {
       <Tab.Screen name="Home" component={Home} />
       <Tab.Screen name="RAB" component={RAB} />
       <Tab.Screen name="Realisasi" component={Pengeluaran} />
-      <Tab.Screen name="Profile" component={Profile} />
+      <Tab.Screen name="Laporan" component={Laporan} />
     </Tab.Navigator>
   );
 };
@@ -78,6 +83,11 @@ const Router = () => {
         options={{headerShown: false}}
       />
       <Stack.Screen
+        name="ListEdit"
+        component={ListEdit}
+        options={{headerShown: false}}
+      />
+      <Stack.Screen
         name="ImportRAB"
         component={ImportRAB}
         options={{headerShown: false}}
@@ -88,6 +98,11 @@ const Router = () => {
         options={{headerShown: false}}
       />
       <Stack.Screen
+        name="AddPengeluaranDetail"
+        component={AddPengeluaranDetail}
+        options={{headerShown: false}}
+      />
+      <Stack.Screen
         name="ListPengeluaran"
         component={ListPengeluaran}
         options={{headerShown: false}}
@@ -95,6 +110,11 @@ const Router = () => {
       <Stack.Screen
         name="RequestPengeluaran"
         component={RequestPengeluaran}
+        options={{headerShown: false}}
+      />
+      <Stack.Screen
+        name="Profile"
+        component={Profile}
         options={{headerShown: false}}
       />
       <Stack.Screen
@@ -125,6 +145,16 @@ const Router = () => {
       <Stack.Screen
         name="DetailPengeluaran"
         component={DetailPengeluaran}
+        options={{headerShown: false}}
+      />
+      <Stack.Screen
+        name="Informasi"
+        component={Informasi}
+        options={{headerShown: false}}
+      />
+      <Stack.Screen
+        name="Preview"
+        component={Preview}
         options={{headerShown: false}}
       />
     </Stack.Navigator>

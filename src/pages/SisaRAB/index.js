@@ -7,7 +7,7 @@ import {Button, Header, TextInput} from '../../components';
 import {showMessage, useForm} from '../../utils';
 import storage from '../../utils/storage';
 
-const SisaRAB = ({navigation}) => {
+const SisaRAB = ({navigation, route}) => {
   const [token, setToken] = useState('');
   const [NPSN, setNPSN] = useState('');
   const [activitas, setActivitas] = useState([]);
@@ -20,16 +20,19 @@ const SisaRAB = ({navigation}) => {
   const [selectedActivitas2, setSelectedActivitas2] = useState('');
   const [selectedActivitas3, setSelectedActivitas3] = useState('');
   const [selectedActivitas4, setSelectedActivitas4] = useState('');
+  const [ringgit, setRinggit] = useState('');
 
   const [form, setForm] = useForm({
-    total_ringgit: '',
+    ringgit: '',
     total_rupiah: '',
     tambahan_biaya_ringgit: '',
     tambahan_biaya_rupiah: '',
-    prioritas: '',
+    keterangan: '',
   });
 
-  const rupiah = parseInt(form.total_ringgit) * 3000;
+  const data = route.params;
+
+  const rupiah = parseInt(form.tambahan_biaya_ringgit) * 3000;
 
   const API_HOST = {
     url: 'https://api.laporanclcsmp.com/api/v1/',
@@ -62,7 +65,6 @@ const SisaRAB = ({navigation}) => {
       },
     });
     setActivitas2(response.data.aktifitas);
-    setForm('kode', response.data.code);
   };
 
   const getData3 = async (e) => {
@@ -72,7 +74,6 @@ const SisaRAB = ({navigation}) => {
       },
     });
     setActivitas3(response.data.aktifitas);
-    setForm('kode', response.data.code);
   };
 
   const getData4 = async (e) => {
@@ -82,7 +83,6 @@ const SisaRAB = ({navigation}) => {
       },
     });
     setActivitas4(response.data.aktifitas);
-    setForm('kode', response.data.code);
   };
 
   useEffect(() => {
@@ -115,22 +115,18 @@ const SisaRAB = ({navigation}) => {
         key: 'profile',
       })
       .then((res) => {
-        const kode_isi_1 = selectedActivitas2 === '' ? 0 : selectedActivitas2;
-        const kode_isi_2 = selectedActivitas3 === '' ? 0 : selectedActivitas3;
-        const kode_isi_3 = selectedActivitas4 === '' ? 0 : selectedActivitas4;
-        const data = {
-          id_cabang: res.cabang.id,
-          id_aktifitas: selectedActivitas1,
-          kode_isi_1: kode_isi_1,
-          kode_isi_2: kode_isi_2,
-          kode_isi_3: kode_isi_3,
-          total_ringgit: parseInt(form.total_ringgit),
-          total_rupiah: rupiah,
-          tambahan_biaya_ringgit: '',
-          tambahan_biaya_rupiah: '',
+        const dataForSubmit = {
+          id_realisasi: data.id_realisasi,
+          sisa_ringgit: parseInt(ringgit),
+          sisa_rupiah: parseInt(form.total_rupiah),
+          kategori: 'RAB',
+          id_rab: data.id_rab,
+          jumlah_ringgit: parseInt(form.tambahan_biaya_ringgit),
+          jumlah_rupiah: rupiah,
+          keterangan: form.keterangan,
         };
 
-        Axios.post(`${API_HOST.url}rab`, data, {
+        Axios.post(`${API_HOST.url}pindah-dana`, dataForSubmit, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -205,7 +201,14 @@ const SisaRAB = ({navigation}) => {
               onChangeItem={(item) => {
                 setSelectedActivitas2(item.value);
                 if (item.value) {
-                  getData3(item.value);
+                  const x = setForm(
+                    'total_rupiah',
+                    item.harga_rupiah.toString(),
+                  );
+                  setRinggit(item.harga_ringgit.toString());
+                  if (x) {
+                    getData3(item.value);
+                  }
                 }
               }}
             />
@@ -220,7 +223,14 @@ const SisaRAB = ({navigation}) => {
               onChangeItem={(item) => {
                 setSelectedActivitas3(item.value);
                 if (item.value) {
-                  getData4(item.value);
+                  const x = setForm(
+                    'total_rupiah',
+                    item.harga_rupiah.toString(),
+                  );
+                  setRinggit(item.harga_ringgit.toString());
+                  if (x) {
+                    getData4(item.value);
+                  }
                 }
               }}
             />
@@ -234,14 +244,16 @@ const SisaRAB = ({navigation}) => {
               placeholder="Pilih Uraian"
               onChangeItem={(item) => {
                 setSelectedActivitas4(item.value);
+                setForm('total_rupiah', item.harga_rupiah.toString());
+                setRinggit(item.harga_ringgit.toString());
               }}
             />
             <View>
               <Text style={styles.labelInput}>Total Ringgit</Text>
               <TextInput
                 placeholder="Total Ringgit (RM)"
-                value={form.harga_ringgit}
-                onChangeText={(value) => setForm('harga_ringgit', value)}
+                value={ringgit}
+                onChangeText={(value) => setRinggit(value)}
                 disabled={false}
               />
             </View>
@@ -249,8 +261,8 @@ const SisaRAB = ({navigation}) => {
               <Text style={styles.labelInput}>Total Rupiah</Text>
               <TextInput
                 placeholder="Total Rupiah (RP)"
-                value={`${isNaN(rupiah) ? 0 : rupiah}`}
-                onChangeText={(value) => setForm('harga_rupiah', value)}
+                value={form.total_rupiah}
+                onChangeText={(value) => setForm('total_rupiah', value)}
                 disabled={false}
               />
             </View>
@@ -268,11 +280,19 @@ const SisaRAB = ({navigation}) => {
               <Text style={styles.labelInput}>Tambahan Biaya (RP)</Text>
               <TextInput
                 placeholder="Tambahan Biaya (RP)"
-                value={form.tambahan_biaya_rupiah}
+                value={`${isNaN(rupiah) ? 0 : rupiah}`}
                 onChangeText={(value) =>
                   setForm('tambahan_biaya_rupiah', value)
                 }
                 disabled={false}
+              />
+            </View>
+            <View>
+              <Text style={styles.labelInput}>Keterangan</Text>
+              <TextInput
+                placeholder="Keterangan"
+                value={form.keterangan}
+                onChangeText={(value) => setForm('keterangan', value)}
               />
             </View>
           </View>

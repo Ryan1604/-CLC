@@ -1,66 +1,59 @@
 import Axios from 'axios';
 import LottieView from 'lottie-react-native';
 import React, {useEffect, useState} from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import {showMessage} from '../../utils';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {FloatingAction} from 'react-native-floating-action';
 import normalize from 'react-native-normalize';
+import {useDispatch} from 'react-redux';
 import {IcArrowRight} from '../../assets';
 import {Button, Gap, Header, Number} from '../../components';
-import storage from '../../utils/storage';
+import {API_HOST} from '../../config/API';
+import {cancelAction, submitAction} from '../../redux/action/rab';
+import {getData} from '../../utils/storage';
 
 const RAB = ({navigation}) => {
   const [data, setData] = useState([]);
-  const [total, setTotal] = useState(0);
+  const [rupiah, setRupiah] = useState(0);
+  const [ringgit, setRinggit] = useState(0);
   const [id, setId] = useState('');
-  const [token, setToken] = useState('');
   const [status, setStatus] = useState('');
+  const [NPSN, setNPSN] = useState(null);
+  const [fungsi, setFungsi] = useState(0);
 
-  const API_HOST = {
-    url: 'https://api.laporanclcsmp.com/api/v1/',
-  };
-
+  // Get Data Profile
   useEffect(() => {
-    storage
-      .load({
-        key: 'token',
-      })
-      .then((res) => {
-        setToken(res);
-        storage
-          .load({
-            key: 'profile',
-          })
-          .then((result) => {
-            setId(result.cabang.id);
-            const NPSN = result.cabang.kode;
-            Axios.get(`${API_HOST.url}rab/npsn/${NPSN}`, {
-              headers: {
-                Authorization: `Bearer ${res}`,
-              },
-            })
-              .then((r) => {
-                setStatus(r.data.status);
-                setData(r.data.data);
-                setTotal(r.data.total_harga);
-              })
-              .catch((err) => {
-                console.log(err.response);
-              });
-          })
-          .catch((err) => {
-            console.warn(err.message);
-          });
-      })
-      .catch((err) => {
-        console.warn(err.message);
-      });
+    getData('profile').then((res) => {
+      setId(res.cabang.id);
+      setNPSN(res.cabang.kode);
+    });
+  });
+
+  // Get Data RAB
+  useEffect(() => {
+    const source = Axios.CancelToken.source();
+    const getDataRAB = async () => {
+      try {
+        const result = await Axios.get(`${API_HOST.url}rab/npsn/${NPSN}`, {
+          cancelToken: source.token,
+        });
+
+        setStatus(result.data.status);
+        setData(result.data.data);
+        setRupiah(result.data.total_harga_rupiah);
+        setRinggit(result.data.total_harga_ringgit);
+        setFungsi(result.data.fungsi);
+      } catch (err) {
+        if (Axios.isCancel(err)) {
+        } else {
+          throw err;
+        }
+      }
+    };
+    getDataRAB();
+
+    return () => {
+      source.cancel();
+    };
   });
 
   const actions = [
@@ -74,35 +67,16 @@ const RAB = ({navigation}) => {
     },
   ];
 
-  const body = {};
-
-  const onSubmit = () => {
-    Axios.post(`${API_HOST.url}rab/ajukan/${id}`, body, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((r) => {
-        showMessage(r.data.meta.message);
-      })
-      .catch((err) => {
-        console.log(err.response);
-      });
+  const onSubmit = async () => {
+    dispatch(submitAction(id, navigation));
   };
+
+  const dispatch = useDispatch();
 
   const onCancel = () => {
-    Axios.post(`${API_HOST.url}rab/batal/${id}`, body, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((r) => {
-        showMessage(r.data.meta.message);
-      })
-      .catch((err) => {
-        console.log(err.response);
-      });
+    dispatch(cancelAction(id));
   };
+
   return (
     <View style={styles.page}>
       {data.length <= 0 || data === undefined ? (
@@ -115,8 +89,8 @@ const RAB = ({navigation}) => {
           />
         </View>
       ) : (
-        <View style={styles.page}>
-          <Header title="Daftar RAB" />
+        <>
+          <Header title="RAB" />
           <View style={styles.content}>
             <ScrollView>
               {data.map((item) => {
@@ -143,27 +117,6 @@ const RAB = ({navigation}) => {
                     </View>
                   );
                 }
-                return (
-                  <View key={item.id}>
-                    <TouchableOpacity
-                      style={styles.list}
-                      activeOpacity={0.7}
-                      onPress={() => navigation.navigate('EditRAB', item)}>
-                      <View style={styles.containerList}>
-                        <View style={styles.row}>
-                          <Text style={styles.file}>{item.kode} - </Text>
-                          <Text style={styles.file}>{item.nama}</Text>
-                        </View>
-                        <Number
-                          number={item.total_harga_rupiah}
-                          style={styles.price}
-                          prefix="Rp. "
-                        />
-                      </View>
-                      <IcArrowRight />
-                    </TouchableOpacity>
-                  </View>
-                );
               })}
             </ScrollView>
             <Gap height={10} />
@@ -171,32 +124,81 @@ const RAB = ({navigation}) => {
             {status === '1' && (
               <>
                 <View style={styles.totalPrice}>
-                  <Text style={styles.label}>Total Harga</Text>
-                  <Number number={total} style={styles.total} prefix="Rp. " />
+                  <Text style={styles.label}>Jumlah Dana RAB</Text>
+                  <View>
+                    <Number
+                      number={ringgit}
+                      style={styles.total}
+                      prefix="RM "
+                    />
+                    <Number
+                      number={rupiah}
+                      style={styles.total}
+                      prefix="Rp. "
+                    />
+                  </View>
                 </View>
                 <Gap height={10} />
                 <View style={styles.button}>
                   <Button text="Batalkan" color="#D9435E" onPress={onCancel} />
+                  <Gap height={20} />
+                  <Button
+                    text="Preview"
+                    color="#181818"
+                    onPress={() => navigation.navigate('Preview')}
+                  />
                 </View>
               </>
             )}
             {status === '0' && (
               <>
                 <View style={styles.totalPrice}>
-                  <Text style={styles.label}>Total Harga</Text>
-                  <Number number={total} style={styles.total} prefix="Rp. " />
+                  <Text style={styles.label}>Jumlah Dana RAB</Text>
+                  <View>
+                    <Number
+                      number={ringgit}
+                      style={styles.total}
+                      prefix="RM "
+                    />
+                    <Number
+                      number={rupiah}
+                      style={styles.total}
+                      prefix="Rp. "
+                    />
+                  </View>
                 </View>
                 <Gap height={10} />
                 <View style={styles.button}>
-                  <Button text="Ajukan" color="#181818" onPress={onSubmit} />
+                  <Button
+                    text="Edit Data"
+                    color="#181818"
+                    onPress={() => navigation.navigate('ListEdit')}
+                  />
+                  <Gap height={20} />
+                  <Button
+                    text="Preview"
+                    color="#181818"
+                    onPress={() => navigation.navigate('Preview', '0')}
+                  />
                 </View>
               </>
             )}
             {status === '3' && (
               <>
                 <View style={styles.totalPrice}>
-                  <Text style={styles.label}>Total Harga</Text>
-                  <Number number={total} style={styles.total} prefix="Rp. " />
+                  <Text style={styles.label}>Jumlah Dana RAB</Text>
+                  <View>
+                    <Number
+                      number={ringgit}
+                      style={styles.total}
+                      prefix="RM "
+                    />
+                    <Number
+                      number={rupiah}
+                      style={styles.total}
+                      prefix="Rp. "
+                    />
+                  </View>
                 </View>
                 <View style={styles.button}>
                   <Button
@@ -208,18 +210,20 @@ const RAB = ({navigation}) => {
               </>
             )}
           </View>
-        </View>
+        </>
       )}
 
-      <FloatingAction
-        actions={actions}
-        color="#181818"
-        onPressItem={(name) => {
-          if (name === 'bt_add') {
-            navigation.navigate('AddRAB');
-          }
-        }}
-      />
+      {fungsi === '0' && (
+        <FloatingAction
+          actions={actions}
+          color="#181818"
+          onPressItem={(name) => {
+            if (name === 'bt_add') {
+              navigation.navigate('AddRAB');
+            }
+          }}
+        />
+      )}
     </View>
   );
 };
@@ -232,12 +236,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   content: {
-    flex: 1,
-    justifyContent: 'space-between',
+    // flex: 1,
   },
   button: {
-    marginBottom: 100,
-    marginHorizontal: 20,
+    marginBottom: normalize(100),
+    marginHorizontal: normalize(20),
   },
   modalBackground: {
     flex: 1,
@@ -248,9 +251,9 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: '80%',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 2,
-    paddingVertical: 30,
-    borderRadius: 20,
+    paddingHorizontal: normalize(2),
+    paddingVertical: normalize(30),
+    borderRadius: normalize(20),
     elevation: 20,
   },
   container: {
@@ -259,16 +262,17 @@ const styles = StyleSheet.create({
   totalPrice: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 28,
+    alignItems: 'center',
+    paddingHorizontal: normalize(28),
   },
   label: {
     fontFamily: 'Montserrat-Medium',
-    fontSize: 18,
+    fontSize: normalize(18),
     color: '#181818',
   },
   total: {
     fontFamily: 'Montserrat-Regular',
-    fontSize: 18,
+    fontSize: normalize(18),
     color: '#3D3D3D',
   },
   null: {
@@ -277,10 +281,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   illustration: {
-    width: 350,
+    width: normalize(350),
   },
   row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   list: {
     flexDirection: 'row',

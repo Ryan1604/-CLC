@@ -1,68 +1,44 @@
 import React from 'react';
-import {Image, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
-import {IcArrowRight, ILApproved, ILRejected, ILWaiting} from '../../../assets';
-import {Gap} from '../../atoms';
+import {FlatList, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import normalize from 'react-native-normalize';
+import {IcArrowRight} from '../../../assets';
+import {Gap} from '../../atoms';
 
-const ListRequest = ({kode, name, status, type, onPress, amount}) => {
-  const Icon = () => {
-    switch (status) {
-      case 'Menunggu Persetujuan':
-        return <Image source={ILWaiting} style={styles.icon} />;
-      case 'Disetujui':
-        return <Image source={ILApproved} style={styles.icon} />;
-      case 'Ditolak':
-        return <Image source={ILRejected} style={styles.icon} />;
-      default:
-        return <Image source={ILWaiting} style={styles.icon} />;
-    }
-  };
+const ListRequest = ({name, status, onPress}) => {
+  const data = [
+    {
+      name,
+      status,
+    },
+  ];
+
   return (
-    <View>
-      {type === 'Check' ? (
+    <FlatList
+      data={data}
+      renderItem={(item) => (
         <TouchableOpacity
           style={styles.list}
           activeOpacity={0.7}
           onPress={onPress}>
           <View style={styles.container}>
-            <Text style={styles.file}>
-              {kode} - {name}
-            </Text>
+            <Text style={styles.file}>{item.item.name}</Text>
             <Gap height={2} />
-            {status === 'Belum Dibelanjakan' ? (
+            {item.item.status === 'Belum Dibelanjakan' ? (
               <View style={styles.borderBelum}>
-                <Text style={styles.status}>{status}</Text>
+                <Text style={styles.status}>{item.item.status}</Text>
               </View>
             ) : (
               <View style={styles.borderSudah}>
-                <Text style={styles.status}>{status}</Text>
-              </View>
-            )}
-          </View>
-          <IcArrowRight />
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity
-          style={styles.list}
-          activeOpacity={0.7}
-          onPress={onPress}>
-          {type === 'Check' ? <View /> : <Icon />}
-          <View style={styles.container}>
-            <Text style={styles.file}>{name}</Text>
-            {amount > 0 ? (
-              <View style={styles.borderProses}>
-                <Text style={styles.status}>{amount}</Text>
-              </View>
-            ) : (
-              <View style={styles.borderProses}>
-                <Text style={styles.status}>{status}</Text>
+                <Text style={styles.status}>{item.item.status}</Text>
               </View>
             )}
           </View>
           <IcArrowRight />
         </TouchableOpacity>
       )}
-    </View>
+      keyExtractor={(item) => item.id}
+      showsVerticalScrollIndicator={false}
+    />
   );
 };
 
@@ -90,7 +66,7 @@ const styles = StyleSheet.create({
   },
   file: {
     fontFamily: 'Montserrat-Medium',
-    fontSize: normalize(16),
+    fontSize: normalize(14),
     color: '#2E2E2E',
   },
   status: {

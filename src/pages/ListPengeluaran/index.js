@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+import Axios from 'axios';
 import LottieView from 'lottie-react-native';
 import React, {useEffect, useRef, useState} from 'react';
 import {
@@ -10,7 +10,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {Gap, Header, ListRequest} from '../../components';
+import normalize from 'react-native-normalize';
+import {IcArrowRight} from '../../assets';
+import {Gap, Header, Number} from '../../components';
+import storage, {getData} from '../../utils/storage';
+import {API_HOST} from '../../config/API';
 
 const ModalPopUp = ({visible, children}) => {
   const [showModal, setShowModal] = useState(visible);
@@ -49,12 +53,58 @@ const ModalPopUp = ({visible, children}) => {
 };
 
 const ListPengeluaran = ({navigation}) => {
+  const [id, setId] = React.useState('');
   const [visible, setVisible] = useState(false);
-  const [data] = useState(true);
+  const [token, setToken] = useState('');
+  const [data, setData] = useState([]);
+  const [itemData, setItemData] = useState({});
+
+  // Get Data Token
+  useEffect(() => {
+    getData('token').then((res) => {
+      setToken(res);
+    });
+  }, []);
+
+  // Get Data Profile
+  useEffect(() => {
+    getData('profile').then((res) => {
+      setId(res.cabang.id);
+    });
+  }, []);
+
+  // Get Data
+  useEffect(() => {
+    const source = Axios.CancelToken.source();
+    const getDataRealisasi = async () => {
+      try {
+        const result = await Axios.get(`${API_HOST.url}realisasi/${id}/sisa`, {
+          cancelToken: source.token,
+        });
+        console.log(result);
+        setData(result.data.data);
+      } catch (err) {
+        if (Axios.isCancel(err)) {
+        } else {
+          throw err;
+        }
+      }
+    };
+    getDataRealisasi();
+
+    return () => {
+      source.cancel();
+    };
+  });
+
+  const openModal = (item) => {
+    setItemData(item);
+    setVisible(true);
+  };
 
   return (
     <View style={styles.page}>
-      {data ? (
+      {data.length > 0 ? (
         <View style={styles.page}>
           <Header
             title="Daftar Dana Sisa"
@@ -63,13 +113,43 @@ const ListPengeluaran = ({navigation}) => {
           />
           <View style={styles.content}>
             <ScrollView>
-              <ListRequest
-                kode="3.2.1"
-                name="Beli Buku"
-                amount="100"
-                status="Menunggu Persetujuan"
-                onPress={() => setVisible(true)}
-              />
+              {data.map((item, index) => {
+                if (item.status === 0) {
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.list}
+                      activeOpacity={0.7}
+                      onPress={() => openModal(item)}>
+                      <View style={styles.containerList}>
+                        <Text style={styles.file}>{item.nama}</Text>
+                        <View style={styles.borderProses}>
+                          <Number
+                            number={item.sisa_rupiah}
+                            style={styles.status}
+                            prefix="Rp. "
+                          />
+                        </View>
+                      </View>
+                      <IcArrowRight />
+                    </TouchableOpacity>
+                  );
+                } else {
+                  return (
+                    <View key={index} style={styles.list}>
+                      <View style={styles.containerList}>
+                        <Text style={styles.file}>{item.nama}</Text>
+                        <View style={styles.borderProses}>
+                          <Text style={styles.status}>
+                            Menunggu Persetujuan
+                          </Text>
+                        </View>
+                      </View>
+                      <IcArrowRight />
+                    </View>
+                  );
+                }
+              })}
             </ScrollView>
           </View>
         </View>
@@ -100,7 +180,7 @@ const ListPengeluaran = ({navigation}) => {
                 style={styles.RAB}
                 onPress={() => {
                   setVisible(false);
-                  navigation.navigate('SisaRAB');
+                  navigation.navigate('SisaRAB', itemData);
                 }}>
                 <Text style={styles.textModal}>RAB</Text>
               </TouchableOpacity>
@@ -110,7 +190,7 @@ const ListPengeluaran = ({navigation}) => {
                 style={styles.nonRAB}
                 onPress={() => {
                   setVisible(false);
-                  navigation.navigate('RequestPengeluaran');
+                  navigation.navigate('RequestPengeluaran', itemData);
                 }}>
                 <Text style={styles.textModal}>Non RAB</Text>
               </TouchableOpacity>
@@ -134,8 +214,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   button: {
-    marginBottom: 100,
-    marginHorizontal: 20,
+    marginBottom: normalize(100),
+    marginHorizontal: normalize(20),
   },
   modalBackground: {
     flex: 1,
@@ -146,10 +226,10 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: '80%',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 2,
-    paddingVertical: 30,
-    borderRadius: 20,
-    elevation: 20,
+    paddingHorizontal: normalize(2),
+    paddingVertical: normalize(30),
+    borderRadius: normalize(20),
+    elevation: normalize(20),
   },
   container: {
     alignItems: 'center',
@@ -160,30 +240,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   illustration: {
-    width: 350,
+    width: normalize(350),
   },
   containeModal: {
     flexDirection: 'row',
   },
   RAB: {
-    width: 120,
+    width: normalize(120),
     backgroundColor: '#181818',
-    paddingVertical: 20,
-    borderRadius: 10,
+    paddingVertical: normalize(20),
+    borderRadius: normalize(10),
     justifyContent: 'center',
     alignItems: 'center',
   },
   nonRAB: {
-    width: 120,
+    width: normalize(120),
     backgroundColor: '#181818',
-    paddingVertical: 20,
-    borderRadius: 10,
+    paddingVertical: normalize(20),
+    borderRadius: normalize(10),
     justifyContent: 'center',
     alignItems: 'center',
   },
   textModal: {
     fontFamily: 'Montserrat-Medium',
-    fontSize: 14,
+    fontSize: normalize(14),
     color: '#FFFFFF',
   },
   buttonClose: {
@@ -191,6 +271,35 @@ const styles = StyleSheet.create({
   },
   textClose: {
     fontFamily: 'Montserrat-Regular',
-    fontSize: 14,
+    fontSize: normalize(14),
+  },
+  list: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderColor: '#C4C4C4',
+    marginHorizontal: normalize(35),
+    paddingVertical: normalize(20),
+    paddingLeft: normalize(14),
+    paddingRight: normalize(20),
+  },
+  containerList: {flex: 1},
+  file: {
+    fontFamily: 'Montserrat-Medium',
+    fontSize: normalize(16),
+    color: '#2E2E2E',
+  },
+  status: {
+    fontFamily: 'Montserrat-Medium',
+    fontSize: normalize(10),
+    color: '#2E2E2E',
+  },
+  borderProses: {
+    backgroundColor: '#FFE08A',
+    paddingHorizontal: normalize(7),
+    paddingVertical: normalize(4),
+    borderRadius: normalize(5),
+    width: normalize(150),
   },
 });

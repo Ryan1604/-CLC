@@ -1,222 +1,99 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
+import CheckBox from '@react-native-community/checkbox';
 import Axios from 'axios';
-import Moment from 'moment';
 import 'moment/locale/id';
 import React, {useEffect, useState} from 'react';
-import {
-  Animated,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import {launchCamera} from 'react-native-image-picker';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import normalize from 'react-native-normalize';
-import {IcCamera} from '../../assets';
-import {Button, Gap, Header, Number, TextInput} from '../../components';
-import {showMessage, useForm} from '../../utils';
-import storage from '../../utils/storage';
+import {Button, Gap, Header, TextInput} from '../../components';
+import {API_HOST} from '../../config/API';
+import {getData} from '../../utils/storage';
 
 const AddPengeluaran = ({navigation, route}) => {
-  const [form, setForm] = useForm({
-    nama: '',
-    keterangan: '',
-    date: new Date(),
-    harga_ringgit: '',
-    harga_rupiah: '',
-    sisa_ringgit: '',
-    sisa_rupiah: '',
-    photo: '',
-  });
-  const [show, setShow] = useState(false);
-  const [photo, setPhoto] = useState(null);
+  const {uraian, kode} = route.params.item;
   const [NPSN, setNPSN] = useState('');
+  const [checkedId, setCheckId] = useState(-1);
+  const [toggleCheckBox, setToggleCheckBox] = useState([]);
+  const [search, setSearch] = React.useState();
 
-  const data = route.params;
-
-  const rupiah = parseInt(form.harga_ringgit) * 3000;
-  const sisa_ringgit = data.total_harga_ringgit - parseInt(form.harga_ringgit);
-  const sisa_rupiah = data.total_harga_rupiah - rupiah;
-
-  const API_HOST = {
-    url: 'https://api.laporanclcsmp.com/api/v1/',
-  };
-
-  const onChange = (event, selectedDate) => {
-    const currentDate = selectedDate || form.date;
-    setForm('date', currentDate);
-    setShow(false);
-  };
-
-  const openCamera = () => {
-    launchCamera(
-      {
-        quality: 1,
-        maxHeight: 2000,
-        maxWidth: 2000,
-      },
-      (response) => {
-        if (response.didCancel || response.error) {
-          showMessage('Anda tidak memilih Photo', 'failed');
-        } else {
-          const source = {uri: response.uri};
-          const dataImage = {
-            uri: response.uri,
-            type: response.type,
-            name: response.fileName,
-          };
-
-          setForm('photo', dataImage);
-          setPhoto(source);
-        }
-      },
-    );
-  };
-
+  // Get Data Profile
   useEffect(() => {
-    storage
-      .load({
-        key: 'profile',
-      })
-      .then((ret) => {
-        setNPSN(ret.cabang.kode);
-      })
-      .catch((err) => {
-        console.warn(err.message);
-      });
+    getData('profile').then((res) => {
+      setNPSN(res.cabang.kode);
+    });
   }, []);
 
-  const onSubmit = () => {
-    const day = new Date(form.date).getDate();
-    const month = new Date(form.date).getMonth();
-    const year = new Date(form.date).getFullYear();
-    const date = year + '-' + month + '-' + day;
+  const onSearch = async () => {
+    const source = Axios.CancelToken.source();
+    try {
+      const result = await Axios.get(
+        `${API_HOST.url}cari-code?kode=${search}&cabang=4`,
+        {
+          cancelToken: source.token,
+        },
+      );
+      setToggleCheckBox(result.data.rab);
+    } catch (err) {
+      if (Axios.isCancel(err)) {
+      } else {
+        throw err;
+      }
+    }
+  };
 
-    storage
-      .load({
-        key: 'token',
-      })
-      .then((res) => {
-        const dataForSubmit = new FormData();
-        dataForSubmit.append('id_rab', data.id);
-        dataForSubmit.append('id_cabang', data.id_cabang);
-        dataForSubmit.append('nama', form.nama);
-        dataForSubmit.append('keterangan', form.keterangan);
-        dataForSubmit.append('harga_ringgit', parseInt(form.harga_ringgit));
-        dataForSubmit.append('harga_rupiah', rupiah);
-        dataForSubmit.append('gambar', form.photo);
-        dataForSubmit.append('tanggal', date);
-        dataForSubmit.append('sisa_ringgit', sisa_ringgit);
-        dataForSubmit.append('sisa_rupiah', sisa_rupiah);
+  const handleCheck = (id) => {
+    setCheckId({id});
+    const data = toggleCheckBox;
+    data[id].checked = !data[id].checked;
+  };
 
-        Axios.post(`${API_HOST.url}belanjakan`, dataForSubmit, {
-          headers: {
-            Authorization: `Bearer ${res}`,
-            'Content-Type': 'multipart/form-data',
-          },
-        })
-          .then((result) => {
-            console.log(result);
-            showMessage(result.data.meta.message);
-            setTimeout(() => {
-              navigation.goBack();
-            }, 1000);
-          })
-          .catch((err) => {
-            console.log(err.response);
-          });
-      })
-      .catch((err) => {
-        console.log(err.response);
-      });
+  const getValueCheckBox = () => {
+    var keys = toggleCheckBox.map((t) => t.id);
+    var ringgit = toggleCheckBox.map((t) => t.total_harga_ringgit);
+    var rupiah = toggleCheckBox.map((t) => t.total_harga_rupiah);
+    var checks = toggleCheckBox.map((t) => t.checked);
+    let Selected = [];
+    for (let i = 0; i < checks.length; i++) {
+      if (checks[i] === true) {
+        Selected.push({id: keys[i], ringgit: ringgit[i], rupiah: rupiah[i]});
+      }
+    }
+    navigation.navigate('AddPengeluaranDetail', Selected);
   };
 
   return (
     <View style={styles.page}>
       <Header title="Realisasikan" onBack onPress={() => navigation.goBack()} />
       <View style={styles.container}>
-        <View style={styles.containerAnggaran}>
-          <Text style={styles.labelAnggaran}>Dana Anggaran</Text>
-          <View>
-            <Number
-              number={data.total_harga_ringgit}
-              style={styles.anggaranAmount}
-              prefix="RM. "
-            />
-            <Number
-              number={data.total_harga_rupiah}
-              style={styles.anggaranAmount}
-              prefix="Rp. "
-            />
-          </View>
-        </View>
         <ScrollView showsVerticalScrollIndicator={false}>
-          <TextInput placeholder="NPSN" value={NPSN} editable={false} />
-          <TextInput placeholder="Kode" value={data.kode} editable={false} />
-          <TextInput
-            placeholder="Masukkan Nama Toko"
-            value={form.nama}
-            onChangeText={(value) => setForm('nama', value)}
-          />
-          <TextInput
-            placeholder="Keterangan"
-            value={form.keterangan}
-            onChangeText={(value) => setForm('keterangan', value)}
-          />
-          <TouchableOpacity
-            style={styles.calendar}
-            onPress={() => setShow(true)}>
-            <Text style={styles.date}>
-              {Moment(form.date).format('DD/MM/YYYY')}
-            </Text>
-            {show && (
-              <DateTimePicker
-                testID="dateTimePicker"
-                value={form.date}
-                mode="date"
-                is24Hour
-                display="default"
-                onChange={onChange}
+          <TextInput value={NPSN} editable={false} />
+          <TextInput value={kode + '. ' + uraian} editable={false} />
+          <View style={styles.searchContainer}>
+            <View style={styles.left}>
+              <TextInput
+                value={search}
+                placeholder="Cari Kode"
+                onChangeText={(value) => setSearch(value)}
               />
-            )}
-          </TouchableOpacity>
-          <TextInput
-            placeholder="Total Harga Ringgit (RM)"
-            value={form.harga_ringgit}
-            onChangeText={(value) => setForm('harga_ringgit', value)}
-          />
-          <TextInput
-            placeholder="Total Harga Rupiah (RP)"
-            value={`${isNaN(rupiah) ? 0 : rupiah}`}
-            onChangeText={(value) => setForm('harga_rupiah', value)}
-          />
-          {/* Pengeluaran - Total = Sisa */}
-          <TextInput
-            placeholder="Sisa Ringgit (RM)"
-            value={`${isNaN(sisa_ringgit) ? 0 : sisa_ringgit}`}
-            onChangeText={(value) => setForm('sisa_ringgit', value)}
-          />
-          <TextInput
-            placeholder="Sisa Rupiah (RP)"
-            value={`${isNaN(sisa_rupiah) ? 0 : sisa_rupiah}`}
-            onChangeText={(value) => setForm('sisa_rupiah', value)}
-          />
-          {photo && (
-            <Animated.View style={styles.photoContainer}>
-              <Image source={photo} style={styles.photo} />
-            </Animated.View>
-          )}
-          <Button
-            color="#FED330"
-            text="Ambil Foto"
-            icon={<IcCamera />}
-            onPress={openCamera}
-          />
-
+            </View>
+            <Gap width={20} />
+            <View style={styles.right}>
+              <Button text="Cari" onPress={onSearch} />
+            </View>
+          </View>
+          {toggleCheckBox.map((item, index) => {
+            return (
+              <View style={styles.checkContainer} key={index}>
+                <CheckBox
+                  disabled={false}
+                  value={item.checked}
+                  onValueChange={() => handleCheck(index)}
+                />
+                <Text>{item.kode + ' ' + item.nama}</Text>
+              </View>
+            );
+          })}
           <Gap height={40} />
-          <Button text="Simpan" onPress={onSubmit} />
+          <Button text="Selanjutnya" onPress={() => getValueCheckBox()} />
           <Gap height={20} />
         </ScrollView>
       </View>
@@ -236,13 +113,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginHorizontal: normalize(20),
   },
-  form: {
-    backgroundColor: '#FEF7DD',
-    paddingVertical: normalize(16),
-    borderRadius: normalize(10),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+
   containerAnggaran: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -258,36 +129,22 @@ const styles = StyleSheet.create({
     fontSize: normalize(18),
     color: '#A3A3A3',
   },
-  input: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#A8A8A8',
-    marginBottom: normalize(15),
+  searchContainer: {
+    flexDirection: 'row',
   },
-  picker: {
-    color: '#6D6D6D',
+  left: {
+    flex: 4,
   },
-  calendar: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#A8A8A8',
-    paddingVertical: normalize(16),
-    paddingHorizontal: normalize(16),
-    marginBottom: normalize(15),
+  right: {
+    flex: 2,
   },
-  photoContainer: {
-    marginVertical: normalize(20),
+  checkContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  photo: {
-    width: normalize(200),
-    height: normalize(200),
-    borderRadius: normalize(20),
-  },
-  date: {
-    fontFamily: 'Montserrat-Regular',
-    fontSize: normalize(16),
-  },
-  browseFile: {
-    fontFamily: 'Montserrat-Regular',
-    fontSize: normalize(15),
-    color: '#EBBF1A',
+  labelCheckbox: {
+    fontFamily: 'OpenSans-Medium',
+    fontSize: normalize(14),
+    color: '#000000',
   },
 });

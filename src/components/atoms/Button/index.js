@@ -4,17 +4,10 @@ import {TouchableOpacity} from 'react-native-gesture-handler';
 import {Gap} from '..';
 import normalize from 'react-native-normalize';
 
-const Button = ({
-  text,
-  color = '#181818',
-  textColor = '#FFFFFF',
-  onPress,
-  icon,
-}) => {
+const Button = ({text, color = '#181818', textColor = '#FFFFFF', onPress}) => {
   return (
     <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
       <View style={styles.container(color)}>
-        {icon}
         <Gap width={5} />
         <Text style={styles.text(textColor)}>{text}</Text>
       </View>
